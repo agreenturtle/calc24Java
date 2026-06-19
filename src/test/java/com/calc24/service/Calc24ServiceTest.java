@@ -47,6 +47,24 @@ class Calc24ServiceTest {
     }
 
     @Test
+    void findSolutions_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> service.findSolutions(null));
+    }
+
+    @Test
+    void puzzle_24_point_knownCases() {
+        assertFalse(service.findSolutions(List.of(1, 2, 3, 4)).isEmpty());
+        assertFalse(service.findSolutions(List.of(8, 3, 8, 3)).isEmpty());
+        assertFalse(service.findSolutions(List.of(6, 4, 3, 2)).isEmpty());
+        assertFalse(service.findSolutions(List.of(9, 8, 7, 6)).isEmpty());
+    }
+
+    @Test
+    void puzzle_unsolvable() {
+        assertTrue(service.findSolutions(List.of(1, 1, 1, 1)).isEmpty());
+    }
+
+    @Test
     void evaluate_simpleAddition() {
         assertEquals(7.0, service.evaluate("3 + 4"), 1e-9);
     }
@@ -75,6 +93,16 @@ class Calc24ServiceTest {
     }
 
     @Test
+    void evaluate_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> service.evaluate(null));
+    }
+
+    @Test
+    void evaluate_blank_throws() {
+        assertThrows(IllegalArgumentException.class, () -> service.evaluate("   "));
+    }
+
+    @Test
     void usesCorrectNumbers_valid() {
         assertTrue(service.usesCorrectNumbers("(3 + 5) * (4 - 1)", List.of(3, 5, 4, 1)));
     }
@@ -95,9 +123,14 @@ class Calc24ServiceTest {
     }
 
     @Test
-    void puzzle_1_1_1_1_hasNoSolution() {
-        List<String> solutions = service.findSolutions(List.of(1, 1, 1, 1));
-        assertTrue(solutions.isEmpty());
+    void usesCorrectNumbers_multiDigit() {
+        assertTrue(service.usesCorrectNumbers("12 + 12", List.of(12, 12)));
+    }
+
+    @Test
+    void usesCorrectNumbers_nullInput() {
+        assertFalse(service.usesCorrectNumbers(null, List.of(1, 2, 3, 4)));
+        assertFalse(service.usesCorrectNumbers("1 + 2 + 3 + 4", null));
     }
 
     @Test
@@ -105,5 +138,11 @@ class Calc24ServiceTest {
         List<String> solutions = service.findSolutions(List.of(8, 3, 8, 3));
         assertFalse(solutions.isEmpty());
         assertTrue(solutions.stream().anyMatch(s -> s.contains("8 / (3 - (8 / 3))")));
+    }
+
+    @Test
+    void solver_handlesRepeatedNumbers() {
+        List<String> solutions = service.findSolutions(List.of(6, 6, 6, 6));
+        assertFalse(solutions.isEmpty());
     }
 }

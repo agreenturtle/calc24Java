@@ -25,16 +25,28 @@ public class GameController {
     }
 
     @PostMapping("/solve")
-    public ResponseEntity<SolveResponse> solve(@RequestBody SolveRequest request) {
+    public ResponseEntity<?> solve(@RequestBody SolveRequest request) {
+        if (request == null || request.numbers() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Request body and numbers must not be null"));
+        }
+        if (request.numbers().size() != 4) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Exactly 4 numbers are required"));
+        }
         List<String> solutions = service.findSolutions(request.numbers());
         return ResponseEntity.ok(new SolveResponse(solutions));
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<ValidateResponse> validate(@RequestBody ValidateRequest request) {
+    public ResponseEntity<?> validate(@RequestBody ValidateRequest request) {
         try {
+            if (request == null || request.numbers() == null || request.expression() == null) {
+                return ResponseEntity.badRequest().body(
+                        new ValidateResponse(false, request != null ? request.expression() : null, 0,
+                                "Request body, numbers, and expression must not be null"));
+            }
+
             if (!service.usesCorrectNumbers(request.expression(), request.numbers())) {
-                return ResponseEntity.ok(new ValidateResponse(
+                return ResponseEntity.badRequest().body(new ValidateResponse(
                         false, request.expression(), 0,
                         "Expression must use exactly the numbers: " + request.numbers()));
             }
@@ -42,17 +54,14 @@ public class GameController {
             double result = service.evaluate(request.expression());
             boolean isValid = Math.abs(result - 24.0) < 1e-9;
 
-            String message;
-            if (isValid) {
-                message = "Correct! The expression equals 24.";
-            } else {
-                message = "The expression evaluates to " + result + ", not 24.";
-            }
+            String message = isValid
+                    ? "Correct! The expression equals 24."
+                    : "The expression evaluates to " + result + ", not 24.";
 
             return ResponseEntity.ok(new ValidateResponse(
                     isValid, request.expression(), result, message));
-        } catch (Exception e) {
-            return ResponseEntity.ok(new ValidateResponse(
+        } catch (IllegalArgumentException | ArithmeticException e) {
+            return ResponseEntity.badRequest().body(new ValidateResponse(
                     false, request.expression(), 0,
                     "Invalid expression: " + e.getMessage()));
         }

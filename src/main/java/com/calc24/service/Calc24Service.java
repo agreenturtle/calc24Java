@@ -5,8 +5,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class Calc24Service {
@@ -17,13 +17,12 @@ public class Calc24Service {
     private static final int MAX_NUMBER = 13;
     private static final int COUNT = 4;
 
-    private final Random random = new Random();
-
     private record Expr(double value, String repr) {}
 
     public List<Integer> generatePuzzle() {
+        var rng = ThreadLocalRandom.current();
         while (true) {
-            List<Integer> numbers = random.ints(COUNT, MIN_NUMBER, MAX_NUMBER + 1).boxed().toList();
+            List<Integer> numbers = rng.ints(COUNT, MIN_NUMBER, MAX_NUMBER + 1).boxed().toList();
             if (!findSolutions(numbers).isEmpty()) {
                 return numbers;
             }
@@ -31,7 +30,7 @@ public class Calc24Service {
     }
 
     public List<String> findSolutions(List<Integer> numbers) {
-        if (numbers.size() != COUNT) {
+        if (numbers == null || numbers.size() != COUNT) {
             throw new IllegalArgumentException("Exactly 4 numbers required");
         }
         Set<String> solutions = new LinkedHashSet<>();
@@ -63,9 +62,11 @@ public class Calc24Service {
                 Expr a = exprs.get(i);
                 Expr b = exprs.get(j);
 
-                tryOperator(remaining, solutions, a, b, "+", a.value() + b.value());
+                if (i < j) {
+                    tryOperator(remaining, solutions, a, b, "+", a.value() + b.value());
+                    tryOperator(remaining, solutions, a, b, "*", a.value() * b.value());
+                }
                 tryOperator(remaining, solutions, a, b, "-", a.value() - b.value());
-                tryOperator(remaining, solutions, a, b, "*", a.value() * b.value());
                 if (Math.abs(b.value()) > EPSILON) {
                     tryOperator(remaining, solutions, a, b, "/", a.value() / b.value());
                 }
@@ -82,6 +83,9 @@ public class Calc24Service {
     }
 
     public double evaluate(String expression) {
+        if (expression == null || expression.isBlank()) {
+            throw new IllegalArgumentException("Expression must not be null or blank");
+        }
         String expr = expression.replaceAll("\\s+", "");
         int[] pos = {0};
         double result = parseExpression(expr, pos);
@@ -142,9 +146,9 @@ public class Calc24Service {
             pos[0]++;
             return result;
         }
-        if (c >= '0' && c <= '9') {
+        if (Character.isDigit(c)) {
             int start = pos[0];
-            while (pos[0] < expr.length() && expr.charAt(pos[0]) >= '0' && expr.charAt(pos[0]) <= '9') {
+            while (pos[0] < expr.length() && Character.isDigit(expr.charAt(pos[0]))) {
                 pos[0]++;
             }
             return Double.parseDouble(expr.substring(start, pos[0]));
@@ -153,12 +157,15 @@ public class Calc24Service {
     }
 
     public boolean usesCorrectNumbers(String expression, List<Integer> numbers) {
+        if (expression == null || numbers == null) {
+            return false;
+        }
         String expr = expression.replaceAll("\\s+", "");
         List<Integer> exprNumbers = new ArrayList<>();
         for (int i = 0; i < expr.length(); i++) {
-            if (expr.charAt(i) >= '0' && expr.charAt(i) <= '9') {
+            if (Character.isDigit(expr.charAt(i))) {
                 int start = i;
-                while (i < expr.length() && expr.charAt(i) >= '0' && expr.charAt(i) <= '9') {
+                while (i < expr.length() && Character.isDigit(expr.charAt(i))) {
                     i++;
                 }
                 exprNumbers.add(Integer.parseInt(expr.substring(start, i)));
